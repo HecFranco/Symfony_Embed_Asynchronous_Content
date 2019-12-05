@@ -1,0 +1,38 @@
+version: "3"
+services:
+    app:
+        container_name: container_app
+        build:
+            context: ./docker/app
+            args:
+                - timezone=${TZ}
+        volumes:
+            - ./:/srv
+        env_file:
+            - ./docker-compose.env
+        environment:
+            XDEBUG_CONFIG: remote_host=${XDEBUG_REMOTE_HOST}
+            PHP_IDE_CONFIG: serverName=${NGINX_HOST}
+    nginx:
+        container_name: container_nginx
+        build:
+            context: ./docker/nginx
+            args:
+                - nginx_host=${NGINX_HOST}
+                # - password_ssl=${PASSWORD_SSL}
+        # image: nginx:s4
+        ports:
+            - "80:80"
+            - "443:443"
+        depends_on:
+            - app
+        volumes:
+            - ./public:/srv/public:ro
+            - ./docker/nginx/default.template:/etc/nginx/conf.d/default.template
+            - ./log/nginx:/var/log/nginx
+        env_file:
+            - ./docker-compose.env
+        command: /bin/bash -c "envsubst '$$NGINX_HOST'
+            < /etc/nginx/conf.d/default.template
+            > /etc/nginx/conf.d/default.conf
+            && exec nginx -g 'daemon off;'"
